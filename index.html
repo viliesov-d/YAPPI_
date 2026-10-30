@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101b32">
+  <meta name="description" content="Календар змін 4/2 з обліком зарплати, щоденної каси, плану продажів та премії 2 000 грн за 100% плану.">
+  <title>Зміна — калькулятор зарплати 4/2</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="firebase-config.js"></script>
+  <script src="logic.js" defer></script>
+  <script src="app.js" defer></script>
+  <script type="module" src="cloud.js"></script>
+</head>
+<body class="cloud-locked">
+  <div id="cloud-gate" class="cloud-gate" role="status" aria-live="polite"><div class="gate-card"><span class="gate-symbol">✳</span><h2>Зміна<span class="brand-period">.</span></h2><p id="gate-message">Підключення до облікового запису Firebase…</p><button type="button" id="gate-logout" class="header-logout" style="margin:auto">Вийти з акаунта</button></div></div>
+  <div class="site-shell">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Зміна — на головну">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M7 8.5h18M7 16h18M7 23.5h11" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><circle cx="24" cy="23.5" r="3.5" fill="currentColor"/></svg></span>
+        <span>зміна<span class="brand-period">.</span></span>
+      </a>
+      <div class="header-right">
+        <span class="save-status" id="save-status"><span class="status-dot"></span> Підключення до хмари…</span>
+        <span class="header-account" id="account-name" title="Мій профіль">Профіль</span>
+        <a class="header-account" id="admin-link" href="admin.html" hidden>Адмінпанель</a>
+        <button type="button" class="header-logout" id="logout-button">Вийти</button>
+        <button type="button" class="header-help" id="help-button" aria-label="Як користуватися" title="Як користуватися">?</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="eyebrow-dot"></span> ВАШ ОСОБИСТИЙ ОБЛІК ЗМІН</div>
+          <h1 id="hero-title">Кожна зміна.<br><span>Кожна гривня.</span></h1>
+          <p>Ваш графік 4/2, заробіток за днями та дати виплат — тепер усе в одному календарі.</p>
+          <a class="hero-link" href="#calendar-section">Перейти до календаря <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="art-orb orb-1"></div><div class="art-orb orb-2"></div>
+          <div class="mini-calendar">
+            <div class="mini-cal-heading"><span>МІЙ ГРАФІК</span><span class="mini-cal-icon">↗</span></div>
+            <div class="mini-cal-days"><span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span><span>ПТ</span><span>СБ</span></div>
+            <div class="mini-cal-cells"><span class="on">1</span><span class="on">2</span><span class="on">3</span><span class="on">4</span><span class="rest">5</span><span class="rest">6</span></div>
+            <div class="mini-cal-bottom"><span class="green-spark">✦</span><span>4 дні працюємо <b>·</b> 2 відпочиваємо</span></div>
+          </div>
+          <span class="floating-coin coin-a">₴</span><span class="floating-coin coin-b">✳</span>
+        </div>
+      </section>
+
+      <section class="overview" aria-labelledby="overview-title">
+        <div class="section-heading overview-heading">
+          <div><div class="section-kicker">ФІНАНСОВИЙ ОГЛЯД</div><h2 id="overview-title">Підсумок місяця</h2></div>
+          <span class="view-period" id="overview-period"></span>
+        </div>
+        <div class="summary-grid">
+          <article class="stat-card stat-main"><div class="stat-label">Зароблено за місяць <span class="stat-icon" aria-hidden="true">↗</span></div><div class="stat-value" id="stat-total">0 ₴</div><div class="stat-foot">Сума всіх внесених змін</div></article>
+          <article class="stat-card"><div class="stat-label">З 1 по 15 число <span class="stat-symbol">◐</span></div><div class="stat-value" id="stat-first">0 ₴</div><div class="stat-foot">Виплата 25 числа</div></article>
+          <article class="stat-card"><div class="stat-label">З 16 до кінця <span class="stat-symbol">◑</span></div><div class="stat-value" id="stat-second">0 ₴</div><div class="stat-foot">Виплата 10 числа наступного місяця</div></article>
+          <article class="stat-card"><div class="stat-label">Заповнено змін <span class="stat-symbol">✳</span></div><div class="stat-value" id="stat-shifts">0 / 0</div><div class="stat-foot" id="shifts-caption">За поточним графіком</div></article>
+        </div>
+      </section>
+
+      <section class="plan-section" id="plan-section" aria-labelledby="plan-title">
+        <div class="section-heading">
+          <div><div class="section-kicker">ВАША МЕТА ТА ДОДАТКОВА ВИНАГОРОДА</div><h2 id="plan-title">План на місяць</h2></div>
+          <span class="view-period" id="plan-period"></span>
+        </div>
+        <div class="plan-grid">
+          <article class="plan-card plan-setup">
+            <div class="plan-card-label"><span class="plan-icon">◎</span> План продажів</div>
+            <form id="plan-form" novalidate>
+              <label for="plan-amount" id="plan-input-label">План продажів за місяць, ₴</label>
+              <div class="plan-input-line">
+                <div class="money-field plan-money-field"><span>₴</span><input id="plan-amount" name="plan-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="Наприклад, 150000" maxlength="13" aria-describedby="plan-help plan-error"></div>
+                <button type="submit" class="plan-save">Зберегти ↗</button>
+              </div>
+              <p class="plan-help" id="plan-help">Вкажіть ціль за сумою каси на місяць. Зарплата в цей розрахунок не входить. План зберігається окремо для кожного місяця.</p>
+              <p class="plan-error" id="plan-error" role="alert" hidden></p>
+            </form>
+          </article>
+          <article class="plan-card cash-entry-card">
+            <div class="plan-card-label"><span class="plan-icon cash-entry-icon">₴</span> Каса за день</div>
+            <form id="cash-form" novalidate>
+              <label for="cash-date">Дата зміни</label>
+              <input id="cash-date" type="date" min="1900-01-01" max="2100-12-31" required aria-describedby="cash-status cash-error">
+              <div class="cash-entry-top"><label for="cash-amount">Каса за цей день, ₴</label><span id="cash-status" class="cash-status"></span></div>
+              <div class="plan-input-line">
+                <div class="money-field plan-money-field"><span>₴</span><input id="cash-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="Наприклад, 12000" maxlength="13"></div>
+                <button type="submit" class="plan-save" id="cash-save">Зберегти ↗</button>
+              </div>
+              <p class="plan-help">Залиште суму порожньою та збережіть, щоб видалити запис. Каса зберігається окремо від вашого заробітку.</p>
+              <p class="plan-error" id="cash-error" role="alert" hidden></p>
+            </form>
+          </article>
+          <article class="plan-card plan-tracking">
+            <div class="plan-progress-top"><span>Виконання плану</span><strong id="plan-percent">0%</strong></div>
+            <div class="plan-progress-bar" id="plan-progress" role="progressbar" aria-label="Виконання місячного плану" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="plan-progress-fill" id="plan-progress-fill"></div></div>
+            <div class="plan-values"><div><span>Каса за місяць</span><strong id="plan-earned">0 ₴</strong></div><div><span>До плану</span><strong id="plan-remaining">—</strong></div></div>
+            <p class="plan-message" id="plan-message" role="status">Вкажіть план, щоб бачити прогрес.</p>
+          </article>
+          <article class="plan-card plan-reward" id="plan-reward-card">
+            <div class="plan-reward-label">✦ ПРЕМІЯ ЗА 100% ПЛАНУ</div>
+            <div class="plan-reward-amount">2 000 ₴</div>
+            <div class="plan-reward-status" id="plan-reward-status">Очікує виконання</div>
+            <div class="plan-reward-date">Дата виплати: <strong id="plan-reward-date"></strong></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="cash-ledger-section" id="cash-ledger" aria-labelledby="cash-ledger-title">
+        <div class="section-heading ledger-heading">
+          <div><div class="section-kicker">ОБЛІК ПРОДАЖІВ І ЗАРОБІТКУ</div><h2 id="cash-ledger-title">Журнал каси</h2></div>
+          <span class="view-period" id="ledger-period"></span>
+        </div>
+        <div class="ledger-panel">
+          <div class="ledger-topline">
+            <p>Каса зберігається окремо, а ваш заробіток береться з календаря. Натисніть «Змінити», щоб відредагувати будь-яку зміну.</p>
+            <div class="ledger-totals"><div><span>Уся каса</span><strong id="ledger-cash-total">0 ₴</strong></div><div><span>Мій заробіток</span><strong id="ledger-wage-total">0 ₴</strong></div></div>
+          </div>
+          <div class="ledger-table-wrap">
+            <table class="ledger-table">
+              <thead><tr><th>Дата</th><th>Тип зміни</th><th>Каса за день</th><th>Мій заробіток</th><th><span class="sr-only">Редагування</span></th></tr></thead>
+              <tbody id="ledger-body"></tbody>
+            </table>
+          </div>
+          <p class="ledger-note">Для вихідних та днів за свій рахунок каса і заробіток не включаються в підсумки. Раніше введені суми залишаються збереженими.</p>
+        </div>
+      </section>
+
+      <section class="workspace" id="calendar-section" aria-label="Календар і налаштування">
+        <div class="calendar-panel">
+          <div class="calendar-header">
+            <div><div class="section-kicker">ВАШ РОБОЧИЙ ЧАС</div><h2>Календар змін</h2></div>
+            <div class="month-navigation" aria-label="Навігація по місяцях">
+              <button type="button" class="nav-arrow" id="previous-month" aria-label="Попередній місяць">‹</button>
+              <button type="button" class="month-label" id="month-label" title="Повернутися до поточного місяця"></button>
+              <button type="button" class="nav-arrow" id="next-month" aria-label="Наступний місяць">›</button>
+            </div>
+          </div>
+          <div class="calendar-instruction"><span class="instruction-icon">✦</span> Натисніть на день, щоб додати заробіток, касу або змінити статус.</div>
+          <div class="calendar-grid" role="grid" aria-label="Дні місяця">
+            <div class="weekdays" role="row"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Нд</span></div>
+            <div class="day-grid" id="day-grid"></div>
+          </div>
+          <div class="calendar-footer">
+            <div class="legend"><span><i class="legend-color legend-work"></i> Робоча</span><span><i class="legend-color legend-off"></i> Вихідний</span><span><i class="legend-color legend-replacement"></i> Заміна</span><span><i class="legend-color legend-unpaid"></i> За свій рахунок</span><span><i class="legend-color legend-pay"></i> День виплати</span><span><i class="legend-color legend-bonus"></i> Премія</span></div>
+            <button type="button" class="today-link" id="today-button">Поточний місяць ↗</button>
+          </div>
+        </div>
+
+        <aside class="sidebar">
+          <section class="side-card payday-panel" aria-labelledby="payday-title">
+            <div class="side-topline"><div class="side-icon">₴</div><span class="side-eyebrow">БЕЗ ПЛУТАНИНИ В ДАТАХ</span></div>
+            <h3 id="payday-title">Коли прийде зарплата?</h3>
+            <p class="side-description">За заробіток у вибраному місяці:</p>
+            <div class="payout-item">
+              <div class="payout-header"><div class="pay-number">25</div><div class="payout-meta"><strong>Зарплата 25 числа</strong><span id="pay-25-date"></span></div><span class="pay-check">↗</span></div>
+              <div class="pay-amount" id="pay-25-amount">0 ₴</div><div class="pay-range">За роботу з 1 по 15 число</div>
+            </div>
+            <div class="payout-item payout-next">
+              <div class="payout-header"><div class="pay-number pay-next-number">10</div><div class="payout-meta"><strong>Зарплата 10 числа</strong><span id="pay-10-date"></span></div><span class="pay-check">↗</span></div>
+              <div class="pay-amount" id="pay-10-amount">0 ₴</div><div class="pay-range">За роботу з 16 до кінця місяця</div>
+            </div>
+            <div class="payout-item payout-bonus">
+              <div class="payout-header"><div class="pay-number pay-bonus-number">15</div><div class="payout-meta"><strong>Премія 15 числа</strong><span id="pay-15-date"></span></div><span class="pay-check">✦</span></div>
+              <div class="pay-amount" id="pay-15-amount">0 ₴</div><div class="pay-range" id="pay-15-caption">За виконання 100% місячного плану</div>
+            </div>
+            <div class="payout-note"><span>ⓘ</span> У календарі 10 числа показується зарплата за другу половину <strong>попереднього</strong> місяця, а 15 числа — нарахована премія за <strong>попередній</strong> місяць.</div>
+          </section>
+
+          <section class="side-card settings-panel" aria-labelledby="settings-title">
+            <div class="settings-heading"><div class="settings-heading-icon">⚙</div><div><div class="side-eyebrow">НАЛАШТУВАННЯ</div><h3 id="settings-title">Графік 4/2</h3></div></div>
+            <p class="side-description">Оберіть опорну дату та її місце у циклі. Календар автоматично перерахує всі місяці.</p>
+            <form id="schedule-form">
+              <label for="anchor-date">Опорна дата</label>
+              <input type="date" id="anchor-date" min="1900-01-01" max="2100-12-31" required>
+              <label for="anchor-position">Який це день циклу?</label>
+              <select id="anchor-position">
+                <option value="1">1-й робочий день</option>
+                <option value="2">2-й робочий день</option>
+                <option value="3">3-й робочий день</option>
+                <option value="4">4-й робочий день</option>
+                <option value="5">1-й вихідний</option>
+                <option value="6">2-й вихідний</option>
+              </select>
+              <button class="apply-button" type="submit">Застосувати графік <span>↗</span></button>
+            </form>
+            <div class="settings-note"><span>✧</span> Внесені суми й ручні позначки залишаться на своїх датах.</div>
+          </section>
+
+          <section class="side-card backup-panel">
+            <div class="backup-heading"><div class="backup-icon">⇩</div><h3>Резервна копія</h3></div>
+            <p class="side-description">Дані автоматично синхронізуються через Firebase. JSON-копія дає додатковий захист і можливість перенесення.</p>
+            <div class="backup-actions"><button type="button" id="export-button">Експорт JSON</button><button type="button" id="import-button">Імпорт</button></div>
+            <input id="import-file" type="file" accept=".json,application/json" hidden>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <footer class="site-footer"><span><strong>зміна.</strong> Ваші зміни — ваші правила.</span><span>Всі суми в гривнях · Firebase Cloud</span></footer>
+  </div>
+
+  <dialog id="day-dialog" class="day-dialog" aria-labelledby="dialog-heading">
+    <form id="day-form" novalidate>
+      <div class="dialog-heading-row"><div><div class="dialog-kicker">РЕДАГУВАННЯ ДНЯ</div><h2 id="dialog-heading"></h2><p id="dialog-schedule"></p></div><button type="button" class="dialog-close" id="dialog-close" aria-label="Закрити">×</button></div>
+      <div class="dialog-field-label">Статус дня</div>
+      <div class="day-status-options" role="radiogroup" aria-label="Статус дня">
+        <label class="status-option"><input type="radio" name="day-status" value="scheduled" checked><span><b>За графіком</b><small id="scheduled-hint">Автоматично</small></span></label>
+        <label class="status-option"><input type="radio" name="day-status" value="unpaid"><span><b>За свій рахунок</b><small>Без заробітку</small></span></label>
+        <label class="status-option"><input type="radio" name="day-status" value="replacement"><span><b>Вийшла на заміну</b><small>Додаткова зміна</small></span></label>
+      </div>
+      <label class="dialog-field-label" for="day-amount">Заробіток за день, ₴</label>
+      <div class="money-field"><span>₴</span><input type="text" id="day-amount" inputmode="decimal" autocomplete="off" placeholder="Наприклад, 1500" maxlength="13"></div>
+      <p class="field-hint" id="amount-hint">Внесіть фактичний заробіток за цю зміну.</p>
+      <label class="dialog-field-label" for="day-cash">Каса за день, ₴ <span class="optional">(для плану продажів)</span></label>
+      <div class="money-field"><span>₴</span><input type="text" id="day-cash" inputmode="decimal" autocomplete="off" placeholder="Наприклад, 12000" maxlength="13"></div>
+      <p class="field-hint" id="cash-hint">Каса для розрахунку виконання місячного плану.</p>
+      <label class="dialog-field-label" for="day-note">Примітка <span class="optional">(необов'язково)</span></label>
+      <textarea id="day-note" rows="2" maxlength="250" placeholder="Наприклад, додаткова зміна"></textarea>
+      <p class="form-error" id="day-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button type="button" class="reset-button" id="reset-day">Очистити день</button><button class="save-day-button" type="submit">Зберегти зміни <span>↗</span></button></div>
+    </form>
+  </dialog>
+
+  <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
+    <div class="help-top"><h2 id="help-title">Як користуватися</h2><button type="button" class="dialog-close" id="help-close" aria-label="Закрити">×</button></div>
+    <ol><li><strong>Налаштуйте графік.</strong> Вкажіть відому дату та номер дня в циклі 4/2. Графік працює безперервно через межі місяців.</li><li><strong>Натискайте на дні.</strong> Для робочої зміни введіть фактичну суму. Для додаткової роботи виберіть «Вийшла на заміну», а для пропущеної — «За свій рахунок».</li><li><strong>Переглядайте виплати.</strong> Заробіток з 1 по 15 виплачується 25-го цього місяця, з 16 до кінця — 10-го наступного. Дати виплат позначені у календарі.</li><li><strong>План продажів.</strong> Встановіть ціль за касою за місяць. Внесіть касу за день у розділі «План» або у вікні дня в календарі. Відсоток рахується від суми кас, а не від особистого заробітку. За 100% нараховується одна премія 2 000 ₴ з виплатою 15-го наступного місяця.</li><li><strong>Журнал каси.</strong> Переглядайте окремий список за датою з типом зміни, касою та особистим заробітком із календаря. Кнопка «Змінити» відкриває потрібний день.</li><li><strong>Зберігайте копію.</strong> Дні, каса та плани зберігаються в Firebase. Для додаткового резервування використовуйте експорт та імпорт JSON.</li></ol>
+    <button class="apply-button help-done" type="button" id="help-done">Зрозуміло</button>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
