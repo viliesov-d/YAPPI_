@@ -1,0 +1,14 @@
+{
+  "name": "zmina-firebase",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Admin bootstrap for salary calendar",
+  "type": "module",
+  "scripts": {
+    "grant-admin": "node tools/grant-admin.mjs",
+    "test": "node --test tests/*.test.cjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

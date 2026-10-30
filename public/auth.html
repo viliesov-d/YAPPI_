@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101b32">
+  <title>Вхід і реєстрація — Зміна</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css">
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth.js"></script>
+</head>
+<body>
+<main class="auth-main">
+  <section class="auth-promo">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">✳</span><span>зміна<span class="brand-period">.</span></span></a>
+    <h1>Кожна зміна.<br><span>Кожна гривня.</span></h1>
+    <p>Тепер ваш графік 4/2, зарплата, каса, план продажів і премії синхронізуються між пристроями через Firebase.</p>
+  </section>
+  <section class="auth-wrap"><div class="auth-card">
+    <div class="auth-label">ВАШ ОСОБИСТИЙ КАБІНЕТ</div>
+    <h2 id="auth-title">З поверненням!</h2>
+    <p class="auth-subtext" id="auth-subtext">Увійдіть, щоб відкрити календар і хмарні записи.</p>
+    <div class="auth-tabs" role="tablist" aria-label="Вхід або реєстрація">
+      <button id="login-tab" class="active" type="button" role="tab" aria-selected="true">Увійти</button>
+      <button id="signup-tab" type="button" role="tab" aria-selected="false">Реєстрація</button>
+    </div>
+    <form id="auth-form" novalidate>
+      <div id="name-wrap" class="form-hidden"><label for="auth-name">Ім'я</label><input id="auth-name" type="text" autocomplete="name" maxlength="70" placeholder="Як до вас звертатися"></div>
+      <label for="auth-email">Електронна пошта</label><input id="auth-email" type="email" autocomplete="email" required placeholder="name@example.com">
+      <label for="auth-password">Пароль</label><input id="auth-password" type="password" minlength="6" required autocomplete="current-password" placeholder="Щонайменше 6 символів">
+      <div id="confirm-wrap" class="form-hidden"><label for="auth-confirm">Підтвердження пароля</label><input id="auth-confirm" type="password" autocomplete="new-password" placeholder="Повторіть пароль"></div>
+      <p class="auth-error" id="auth-error" hidden role="alert"></p>
+      <button type="submit" id="auth-submit">Увійти ↗</button>
+    </form>
+    <button id="reset-password" class="auth-reset" type="button">Забули пароль?</button>
+    <p class="auth-help">Пароль обробляє Firebase Authentication; сайт не зберігає його у Firestore. Ваші записи доступні лише вам і призначеним адміністраторам.</p>
+  </div></section>
+</main>
+</body></html>
