@@ -97,7 +97,7 @@
     if (!initialized || !activeUid || !window.ZminaCloud) return;
     writeCache(true);
     const serial = cacheSerial;
-    setIndicator('Синхронізація з Firebase…');
+    setIndicator(navigator.onLine ? 'Синхронізація з Firebase…' : 'Офлайн · Збережено на пристрої');
     window.ZminaCloud.save(state).then(() => {
       // Do not clear pending status for any newer local edit.
       if (serial !== cacheSerial) return;
@@ -109,7 +109,7 @@
       showToast('Помилка Firebase. Локальна копія збережена. ' + error.message);
     });
   }
-  function handleInitialCloud({ uid, data }) {
+  function handleInitialCloud({ uid, data, fromCache = false, hasPendingWrites = false }) {
     activeUid = uid;
     let cloudData = null;
     if (data) {
@@ -122,13 +122,27 @@
       try { pendingData = normalize(ownCache.data); } catch { /* ignore invalid cache */ }
     }
     let upload = false;
+    let discardedLocal = false;
     if (pendingData) {
-      if (!cloudData || window.confirm('На цьому пристрої є зміни, що не синхронізувалися. Завантажити їх у Firebase замість хмарних даних?')) {
+      // A queued Firestore write already appears in its own IndexedDB snapshot: don't duplicate it.
+      if (hasPendingWrites) {
+        state = pendingData;
+        // The last localStorage edit may be newer than the last IndexedDB write (abrupt close).
+        // Queue that complete snapshot again if needed; do not lose unsynced later edits.
+        if (!cloudData || JSON.stringify(cloudData) !== JSON.stringify(pendingData)) upload = true;
+      }
+      else if (fromCache || !cloudData || window.confirm('На цьому пристрої є зміни, що не синхронізувалися. Завантажити їх у Firebase замість хмарних даних?')) {
         state = pendingData; upload = true;
+      } else {
+        // User selected the cloud version; do not leave a stale pending backup behind.
+        state = cloudData; discardedLocal = true;
       }
     }
-    if (!upload && cloudData) state = cloudData;
-    if (!upload && !cloudData) {
+    if (!upload && !pendingData && cloudData) state = cloudData;
+    if (!upload && !cloudData && ownCache?.data) {
+      try { state = normalize(ownCache.data); } catch { /* ignore invalid local backup */ }
+    }
+    if (!upload && !cloudData && !fromCache) {
       // Migration of the previous non-account local version, only when cloud is empty.
       let previous = null;
       try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) previous = normalize(JSON.parse(raw)); } catch { /* ignore */ }
@@ -140,7 +154,13 @@
     el('cloud-gate').hidden = true;
     render();
     if (upload) saveLocal();
-    else { writeCache(false); setIndicator('Збережено у Firebase'); }
+    else if (hasPendingWrites || (pendingData && !discardedLocal)) {
+      writeCache(true);
+      setIndicator('Офлайн-зміни очікують синхронізації');
+    } else {
+      writeCache(false);
+      setIndicator(fromCache ? 'Локальні дані · Перевіряємо Firebase' : 'Збережено у Firebase');
+    }
   }
   window.addEventListener('zmina-cloud-profile', ({ detail }) => {
     el('account-name').textContent = detail.displayName || detail.email || 'Профіль';
@@ -148,6 +168,27 @@
     el('admin-link').hidden = !detail.admin;
   });
   window.addEventListener('zmina-cloud-initial', ({ detail }) => handleInitialCloud(detail));
+  window.addEventListener('zmina-cloud-confirmed', ({ detail }) => {
+    if (!initialized || detail.uid !== activeUid || window.ZminaCloud?.hasPendingWrites) return;
+    const backup = pendingCache(activeUid);
+    if (!backup?.pending) return;
+    try {
+      const server = normalize(detail.data);
+      const local = normalize(backup.data);
+      if (JSON.stringify(server) === JSON.stringify(local)) {
+        // Firestore committed a write queued before this browser session started.
+        state = server;
+        writeCache(false);
+        render();
+        setIndicator('Офлайн-зміни синхронізовані з Firebase');
+      } else {
+        // Do not silently overwrite either a device's offline changes or newer cloud data.
+        const restore = window.confirm('Локальні офлайн-зміни відрізняються від даних у Firebase. Замінити хмарну версію локальною? Натисніть «Скасувати», щоб використати хмарну версію. Перед вибором бажано експортувати JSON-копію.');
+        if (restore) { state = local; saveLocal(); }
+        else { state = server; writeCache(false); render(); setIndicator('Завантажено дані з Firebase'); }
+      }
+    } catch (error) { console.warn('Помилка перевірки офлайн-змін:', error); }
+  });
   window.addEventListener('zmina-cloud-remote', ({ detail }) => {
     if (!initialized || detail.uid !== activeUid || pendingCache(activeUid)?.pending) return;
     try { state = normalize(detail.data); writeCache(false); render(); setIndicator('Оновлено з Firebase'); }
@@ -512,6 +553,11 @@
     }
   }
 
+  window.ZminaPwaCanReload = () => {
+    if (!initialized || window.ZminaCloud?.hasPendingWrites || pendingCache(activeUid)?.pending || document.querySelector('dialog[open]')) return false;
+    const focused = document.activeElement;
+    return !(focused?.matches?.('input, textarea, select') && focused.value);
+  };
   el('logout-button').addEventListener('click', () => window.ZminaCloud?.logout());
   el('gate-logout').addEventListener('click', () => window.ZminaCloud?.logout());
   el('plan-form').addEventListener('submit', savePlan);
