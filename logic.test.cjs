@@ -36,5 +36,42 @@ test('cash and wages of unpaid shifts retained but excluded',()=>{
  const s=state();s.cash['2026-10-01']=100000;s.days['2026-10-01']={override:'unpaid',amount:60000};
  assert.equal(L.monthCashTotal(s,2026,10),0);
  assert.equal(L.dayAmount('2026-10-01',s),0);
- assert.equal(L.monthLedger(s,2026,10)[0].ignoredCash,true);
+ assert.equal(L.monthLedger(s,2026,10).length,0);
+ // Restoring a scheduled work day reveals the preserved complete record again.
+ delete s.days['2026-10-01'].override;
+ assert.equal(L.monthLedger(s,2026,10).length,1);
+});
+
+test('cash journal stays empty on untouched scheduled shifts', () => {
+ const s=state();
+ assert.deepEqual(L.monthLedger(s,2026,10),[]);
+ assert.equal(L.monthCashTotal(s,2026,10),0);
+});
+test('journal shows a working date only when both cash and wage are explicitly entered', () => {
+ const s=state();
+ const date='2026-10-01';
+ s.cash[date]=1200000;
+ assert.equal(L.monthLedger(s,2026,10).length,0,'cash-only is not enough');
+ s.days[date]={amount:150000};
+ assert.equal(L.monthLedger(s,2026,10).length,1);
+ assert.equal(L.monthLedger(s,2026,10)[0].cash,1200000);
+ assert.equal(L.monthLedger(s,2026,10)[0].wage,150000);
+ delete s.cash[date];
+ assert.equal(L.monthLedger(s,2026,10).length,0,'wage-only is not enough');
+});
+test('zero cash and zero wage count as recorded, not empty', () => {
+ const s=state();
+ s.cash['2026-10-01']=0;
+ s.days['2026-10-01']={amount:0};
+ assert.equal(L.monthLedger(s,2026,10).length,1);
+});
+test('replacement shift with both sums is included, off days remain hidden', () => {
+ const s=state();
+ // Oct 5 is off according to anchor 2026-10-01 with 4-on/2-off.
+ s.cash['2026-10-05']=500000;
+ s.days['2026-10-05']={amount:50000};
+ assert.equal(L.monthLedger(s,2026,10).length,0);
+ s.days['2026-10-05'].override='replacement';
+ assert.equal(L.monthLedger(s,2026,10).length,1);
+ assert.equal(L.monthLedger(s,2026,10)[0].type,'replacement');
 });

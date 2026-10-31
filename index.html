@@ -7,8 +7,11 @@
   <meta name="description" content="Календар змін 4/2 з обліком зарплати, щоденної каси, плану продажів та премії 2 000 грн за 100% плану.">
   <title>Зміна — калькулятор зарплати 4/2</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="styles.css">
   <script src="firebase-config.js"></script>
+  <script src="pwa.js" defer></script>
   <script src="logic.js" defer></script>
   <script src="app.js" defer></script>
   <script type="module" src="cloud.js"></script>
@@ -82,16 +85,18 @@
             </form>
           </article>
           <article class="plan-card cash-entry-card">
-            <div class="plan-card-label"><span class="plan-icon cash-entry-icon">₴</span> Каса за день</div>
+            <div class="plan-card-label"><span class="plan-icon cash-entry-icon">₴</span> Каса та зарплата за день</div>
             <form id="cash-form" novalidate>
               <label for="cash-date">Дата зміни</label>
               <input id="cash-date" type="date" min="1900-01-01" max="2100-12-31" required aria-describedby="cash-status cash-error">
               <div class="cash-entry-top"><label for="cash-amount">Каса за цей день, ₴</label><span id="cash-status" class="cash-status"></span></div>
+              <div class="money-field plan-money-field cash-amount-line"><span>₴</span><input id="cash-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="Наприклад, 12000" maxlength="13"></div>
+              <label for="cash-wage">Зарплата за цей день, ₴</label>
               <div class="plan-input-line">
-                <div class="money-field plan-money-field"><span>₴</span><input id="cash-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="Наприклад, 12000" maxlength="13"></div>
+                <div class="money-field plan-money-field"><span>₴</span><input id="cash-wage" type="text" inputmode="decimal" autocomplete="off" placeholder="Наприклад, 1500" maxlength="13"></div>
                 <button type="submit" class="plan-save" id="cash-save">Зберегти ↗</button>
               </div>
-              <p class="plan-help">Залиште суму порожньою та збережіть, щоб видалити запис. Каса зберігається окремо від вашого заробітку.</p>
+              <p class="plan-help">Зарплата автоматично відображається у календарі та виплатах. У журналі день з’явиться тільки після внесення обох сум. Порожнє поле очищає відповідний запис.</p>
               <p class="plan-error" id="cash-error" role="alert" hidden></p>
             </form>
           </article>
@@ -117,8 +122,8 @@
         </div>
         <div class="ledger-panel">
           <div class="ledger-topline">
-            <p>Каса зберігається окремо, а ваш заробіток береться з календаря. Натисніть «Змінити», щоб відредагувати будь-яку зміну.</p>
-            <div class="ledger-totals"><div><span>Уся каса</span><strong id="ledger-cash-total">0 ₴</strong></div><div><span>Мій заробіток</span><strong id="ledger-wage-total">0 ₴</strong></div></div>
+            <p>Тут з’являються лише робочі дні, за які записані і каса, і зарплата. Натисніть «Змінити», щоб відредагувати день у календарі.</p>
+            <div class="ledger-totals"><div><span>Каса в журналі</span><strong id="ledger-cash-total">0 ₴</strong></div><div><span>Мій заробіток</span><strong id="ledger-wage-total">0 ₴</strong></div></div>
           </div>
           <div class="ledger-table-wrap">
             <table class="ledger-table">
@@ -126,7 +131,7 @@
               <tbody id="ledger-body"></tbody>
             </table>
           </div>
-          <p class="ledger-note">Для вихідних та днів за свій рахунок каса і заробіток не включаються в підсумки. Раніше введені суми залишаються збереженими.</p>
+          <p class="ledger-note">Неповні записи не відображаються в журналі, але залишаються збереженими. Суми за вихідні та дні за свій рахунок у журналі не показуються.</p>
         </div>
       </section>
 
@@ -228,7 +233,7 @@
 
   <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
     <div class="help-top"><h2 id="help-title">Як користуватися</h2><button type="button" class="dialog-close" id="help-close" aria-label="Закрити">×</button></div>
-    <ol><li><strong>Налаштуйте графік.</strong> Вкажіть відому дату та номер дня в циклі 4/2. Графік працює безперервно через межі місяців.</li><li><strong>Натискайте на дні.</strong> Для робочої зміни введіть фактичну суму. Для додаткової роботи виберіть «Вийшла на заміну», а для пропущеної — «За свій рахунок».</li><li><strong>Переглядайте виплати.</strong> Заробіток з 1 по 15 виплачується 25-го цього місяця, з 16 до кінця — 10-го наступного. Дати виплат позначені у календарі.</li><li><strong>План продажів.</strong> Встановіть ціль за касою за місяць. Внесіть касу за день у розділі «План» або у вікні дня в календарі. Відсоток рахується від суми кас, а не від особистого заробітку. За 100% нараховується одна премія 2 000 ₴ з виплатою 15-го наступного місяця.</li><li><strong>Журнал каси.</strong> Переглядайте окремий список за датою з типом зміни, касою та особистим заробітком із календаря. Кнопка «Змінити» відкриває потрібний день.</li><li><strong>Зберігайте копію.</strong> Дні, каса та плани зберігаються в Firebase. Для додаткового резервування використовуйте експорт та імпорт JSON.</li></ol>
+    <ol><li><strong>Налаштуйте графік.</strong> Вкажіть відому дату та номер дня в циклі 4/2. Графік працює безперервно через межі місяців.</li><li><strong>Натискайте на дні.</strong> Для робочої зміни введіть фактичну суму. Для додаткової роботи виберіть «Вийшла на заміну», а для пропущеної — «За свій рахунок».</li><li><strong>Переглядайте виплати.</strong> Заробіток з 1 по 15 виплачується 25-го цього місяця, з 16 до кінця — 10-го наступного. Дати виплат позначені у календарі.</li><li><strong>План продажів.</strong> Встановіть ціль за касою за місяць. Внесіть касу за день у розділі «План» або у вікні дня в календарі. Відсоток рахується від суми кас, а не від особистого заробітку. За 100% нараховується одна премія 2 000 ₴ з виплатою 15-го наступного місяця.</li><li><strong>Журнал каси.</strong> У розділі «План» введіть касу та зарплату за одну дату. Зарплата одразу потрапить до календаря. День з’явиться у журналі тільки тоді, коли обидві суми заповнені. Кнопка «Змінити» відкриває потрібний день.</li><li><strong>Зберігайте копію.</strong> Дні, каса та плани зберігаються в Firebase. Для додаткового резервування використовуйте експорт та імпорт JSON.</li></ol>
     <button class="apply-button help-done" type="button" id="help-done">Зрозуміло</button>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

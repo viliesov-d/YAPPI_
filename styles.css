@@ -29,6 +29,8 @@
 .cash-entry-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .cash-status{font-size:10px;color:#759254;font-weight:750;text-align:right}
 .cash-status.unavailable{color:#b47c55}
+.cash-entry-card .cash-amount-line{margin-bottom:14px}
+.cash-entry-card .plan-input-line{min-height:39px}
 .cash-entry-card .plan-help{margin-bottom:0}
 .cash-entry-card .money-field.disabled{opacity:.55}
 .cash-ledger-section{padding-top:32px}
@@ -106,3 +108,7 @@
 @media(max-width:900px){.auth-main{grid-template-columns:1fr;padding:12px}.auth-promo{min-height:220px;padding:25px;gap:22px}.auth-promo h1{font-size:30px}.auth-wrap{padding:10px 0 25px}.auth-card{padding:25px}.admin-layout{grid-template-columns:1fr}.admin-user-list{max-height:340px}}
 @media(max-width:640px){.header-right{gap:5px}.header-account,.header-logout{padding:8px;font-size:10px}.header-account{max-width:90px}.auth-promo h1{font-size:26px}.admin-kpis{grid-template-columns:1fr 1fr}}
 .cloud-gate[hidden]{display:none}
+
+/* Small automatic-update notification; does not affect the existing layout. */
+.pwa-update-notice {position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10000;max-width:min(94vw,560px);padding:12px 20px;border:1px solid rgba(178,220,151,.45);border-radius:14px;background:#17283b;color:#fff;box-shadow:0 12px 40px rgba(0,0,0,.22);text-align:center;font:600 14px/1.5 system-ui,sans-serif;}
+.pwa-update-notice[hidden] {display:none !important;}

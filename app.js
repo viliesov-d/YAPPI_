@@ -97,7 +97,7 @@
     if (!initialized || !activeUid || !window.ZminaCloud) return;
     writeCache(true);
     const serial = cacheSerial;
-    setIndicator('Синхронізація з Firebase…');
+    setIndicator(navigator.onLine ? 'Синхронізація з Firebase…' : 'Офлайн · Збережено на пристрої');
     window.ZminaCloud.save(state).then(() => {
       // Do not clear pending status for any newer local edit.
       if (serial !== cacheSerial) return;
@@ -109,7 +109,7 @@
       showToast('Помилка Firebase. Локальна копія збережена. ' + error.message);
     });
   }
-  function handleInitialCloud({ uid, data }) {
+  function handleInitialCloud({ uid, data, fromCache = false, hasPendingWrites = false }) {
     activeUid = uid;
     let cloudData = null;
     if (data) {
@@ -122,13 +122,27 @@
       try { pendingData = normalize(ownCache.data); } catch { /* ignore invalid cache */ }
     }
     let upload = false;
+    let discardedLocal = false;
     if (pendingData) {
-      if (!cloudData || window.confirm('На цьому пристрої є зміни, що не синхронізувалися. Завантажити їх у Firebase замість хмарних даних?')) {
+      // A queued Firestore write already appears in its own IndexedDB snapshot: don't duplicate it.
+      if (hasPendingWrites) {
+        state = pendingData;
+        // The last localStorage edit may be newer than the last IndexedDB write (abrupt close).
+        // Queue that complete snapshot again if needed; do not lose unsynced later edits.
+        if (!cloudData || JSON.stringify(cloudData) !== JSON.stringify(pendingData)) upload = true;
+      }
+      else if (fromCache || !cloudData || window.confirm('На цьому пристрої є зміни, що не синхронізувалися. Завантажити їх у Firebase замість хмарних даних?')) {
         state = pendingData; upload = true;
+      } else {
+        // User selected the cloud version; do not leave a stale pending backup behind.
+        state = cloudData; discardedLocal = true;
       }
     }
-    if (!upload && cloudData) state = cloudData;
-    if (!upload && !cloudData) {
+    if (!upload && !pendingData && cloudData) state = cloudData;
+    if (!upload && !cloudData && ownCache?.data) {
+      try { state = normalize(ownCache.data); } catch { /* ignore invalid local backup */ }
+    }
+    if (!upload && !cloudData && !fromCache) {
       // Migration of the previous non-account local version, only when cloud is empty.
       let previous = null;
       try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) previous = normalize(JSON.parse(raw)); } catch { /* ignore */ }
@@ -140,7 +154,13 @@
     el('cloud-gate').hidden = true;
     render();
     if (upload) saveLocal();
-    else { writeCache(false); setIndicator('Збережено у Firebase'); }
+    else if (hasPendingWrites || (pendingData && !discardedLocal)) {
+      writeCache(true);
+      setIndicator('Офлайн-зміни очікують синхронізації');
+    } else {
+      writeCache(false);
+      setIndicator(fromCache ? 'Локальні дані · Перевіряємо Firebase' : 'Збережено у Firebase');
+    }
   }
   window.addEventListener('zmina-cloud-profile', ({ detail }) => {
     el('account-name').textContent = detail.displayName || detail.email || 'Профіль';
@@ -148,6 +168,27 @@
     el('admin-link').hidden = !detail.admin;
   });
   window.addEventListener('zmina-cloud-initial', ({ detail }) => handleInitialCloud(detail));
+  window.addEventListener('zmina-cloud-confirmed', ({ detail }) => {
+    if (!initialized || detail.uid !== activeUid || window.ZminaCloud?.hasPendingWrites) return;
+    const backup = pendingCache(activeUid);
+    if (!backup?.pending) return;
+    try {
+      const server = normalize(detail.data);
+      const local = normalize(backup.data);
+      if (JSON.stringify(server) === JSON.stringify(local)) {
+        // Firestore committed a write queued before this browser session started.
+        state = server;
+        writeCache(false);
+        render();
+        setIndicator('Офлайн-зміни синхронізовані з Firebase');
+      } else {
+        // Do not silently overwrite either a device's offline changes or newer cloud data.
+        const restore = window.confirm('Локальні офлайн-зміни відрізняються від даних у Firebase. Замінити хмарну версію локальною? Натисніть «Скасувати», щоб використати хмарну версію. Перед вибором бажано експортувати JSON-копію.');
+        if (restore) { state = local; saveLocal(); }
+        else { state = server; writeCache(false); render(); setIndicator('Завантажено дані з Firebase'); }
+      }
+    } catch (error) { console.warn('Помилка перевірки офлайн-змін:', error); }
+  });
   window.addEventListener('zmina-cloud-remote', ({ detail }) => {
     if (!initialized || detail.uid !== activeUid || pendingCache(activeUid)?.pending) return;
     try { state = normalize(detail.data); writeCache(false); render(); setIndicator('Оновлено з Firebase'); }
@@ -250,10 +291,15 @@
     el('cash-status').classList.toggle('unavailable', !available);
     el('cash-amount').disabled = !available;
     el('cash-amount').parentElement.classList.toggle('disabled', !available);
+    el('cash-wage').disabled = !available;
+    el('cash-wage').parentElement.classList.toggle('disabled', !available);
     el('cash-save').disabled = !available;
     el('cash-save').title = available ? '' : 'Щоб ввести касу, позначте дату як заміну в календарі';
     el('cash-amount').value = Object.prototype.hasOwnProperty.call(state.cash, selectedCashDate)
       ? String(state.cash[selectedCashDate] / 100).replace('.', ',') : '';
+    const entry = state.days[selectedCashDate] || {};
+    el('cash-wage').value = Object.prototype.hasOwnProperty.call(entry, 'amount')
+      ? String(entry.amount / 100).replace('.', ',') : '';
     el('cash-error').hidden = true;
   }
   function saveCash(event) {
@@ -269,30 +315,50 @@
       el('cash-error').hidden = false;
       return;
     }
-    const raw = el('cash-amount').value.trim();
-    const cents = raw ? L.parseMoney(raw) : null;
-    if (raw && cents === null) {
-      el('cash-error').textContent = 'Вкажіть коректну суму каси (до двох знаків після коми).';
+    const cashText = el('cash-amount').value.trim();
+    const wageText = el('cash-wage').value.trim();
+    const cashCents = cashText ? L.parseMoney(cashText) : null;
+    const wageCents = wageText ? L.parseMoney(wageText) : null;
+    if (cashText && cashCents === null) {
+      el('cash-error').textContent = 'Вкажіть коректну касу (до двох знаків після коми).';
       el('cash-error').hidden = false;
+      el('cash-amount').focus();
       return;
     }
-    if (raw) state.cash[date] = cents;
+    if (wageText && wageCents === null) {
+      el('cash-error').textContent = 'Вкажіть коректну зарплату за день (до двох знаків після коми).';
+      el('cash-error').hidden = false;
+      el('cash-wage').focus();
+      return;
+    }
+    // Keep cash in its separate dictionary and wages in the same day record as the calendar.
+    // A partial record is allowed, but it appears in the journal only after both fields are filled.
+    if (cashText) state.cash[date] = cashCents;
     else delete state.cash[date];
+    const entry = { ...(state.days[date] || {}) };
+    if (wageText) entry.amount = wageCents;
+    else delete entry.amount;
+    if (Object.keys(entry).length) state.days[date] = entry;
+    else delete state.days[date];
     selectedCashDate = date;
     saveLocal();
     render();
-    if (storageOK) showToast(raw ? `Касу за ${L.formatDate(date)} записано · синхронізуємо` : 'Запис каси видалено · синхронізуємо');
+    if (storageOK) {
+      showToast(cashText && wageText
+        ? `Касу та зарплату за ${L.formatDate(date)} записано · синхронізуємо`
+        : 'Дані дня збережено · журнал відобразить день після заповнення обох сум');
+    }
   }
   function renderLedger() {
     el('ledger-period').textContent = monthName(view.year, view.month);
     const rows = L.monthLedger(state, view.year, view.month);
-    const stats = L.monthStats(state, view.year, view.month);
-    el('ledger-cash-total').textContent = L.formatMoney(L.monthCashTotal(state, view.year, view.month));
-    el('ledger-wage-total').textContent = L.formatMoney(stats.total);
+    // Journal totals reflect only rows actually visible below, not incomplete entries.
+    el('ledger-cash-total').textContent = L.formatMoney(rows.reduce((sum, item) => sum + item.cash, 0));
+    el('ledger-wage-total').textContent = L.formatMoney(rows.reduce((sum, item) => sum + item.wage, 0));
     const labels = { work: 'Робоча', off: 'Вихідний', replacement: 'Заміна', unpaid: 'За свій рахунок' };
     const body = el('ledger-body');
     if (rows.length === 0) {
-      body.innerHTML = '<tr><td colspan="5" class="ledger-empty">За цей місяць ще немає змін.</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="ledger-empty">Журнал порожній. Внесіть касу та зарплату за день, щоб додати запис.</td></tr>';
       return;
     }
     body.innerHTML = rows.map((item) => {
@@ -512,6 +578,11 @@
     }
   }
 
+  window.ZminaPwaCanReload = () => {
+    if (!initialized || window.ZminaCloud?.hasPendingWrites || pendingCache(activeUid)?.pending || document.querySelector('dialog[open]')) return false;
+    const focused = document.activeElement;
+    return !(focused?.matches?.('input, textarea, select') && focused.value);
+  };
   el('logout-button').addEventListener('click', () => window.ZminaCloud?.logout());
   el('gate-logout').addEventListener('click', () => window.ZminaCloud?.logout());
   el('plan-form').addEventListener('submit', savePlan);
