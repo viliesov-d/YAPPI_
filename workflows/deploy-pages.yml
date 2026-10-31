@@ -1,0 +1,33 @@
+name: Publish Zmina PWA to GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Stamp release and service worker with the commit hash
+        env:
+          BUILD_ID: ${{ github.sha }}
+        run: |
+          printf '{"version":"%s"}\n' "$BUILD_ID" > public/version.json
+          sed -i "s/__BUILD_ID__/$BUILD_ID/g" public/sw.js
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+      - name: Publish
+        id: deployment
+        uses: actions/deploy-pages@v4
