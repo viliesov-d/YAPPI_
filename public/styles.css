@@ -29,6 +29,8 @@
 .cash-entry-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .cash-status{font-size:10px;color:#759254;font-weight:750;text-align:right}
 .cash-status.unavailable{color:#b47c55}
+.cash-entry-card .cash-amount-line{margin-bottom:14px}
+.cash-entry-card .plan-input-line{min-height:39px}
 .cash-entry-card .plan-help{margin-bottom:0}
 .cash-entry-card .money-field.disabled{opacity:.55}
 .cash-ledger-section{padding-top:32px}

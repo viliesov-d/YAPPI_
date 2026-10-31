@@ -100,14 +100,14 @@
       const type = dayType(date, state);
       const cashRecorded = Object.prototype.hasOwnProperty.call(state.cash || {}, date);
       const wageRecorded = Object.prototype.hasOwnProperty.call(state.days[date] || {}, 'amount');
-      // Include scheduled/extra shifts, unpaid dates, and any date with a saved entry.
-      if (!isWorking(type) && type !== 'unpaid' && !cashRecorded && !wageRecorded) continue;
+      // Don't list scheduled empty shifts or partial entries. 0 UAH is a valid recorded amount.
+      // Unpaid/off dates retain any saved sums but are hidden until converted back to work.
+      if (!isWorking(type) || !cashRecorded || !wageRecorded) continue;
       rows.push({ date, type,
-        cash: cashRecorded ? state.cash[date] : 0,
-        wage: wageRecorded ? state.days[date].amount : 0,
-        cashRecorded, wageRecorded,
-        ignoredCash: cashRecorded && !isWorking(type),
-        ignoredWage: wageRecorded && !isWorking(type) });
+        cash: state.cash[date],
+        wage: state.days[date].amount,
+        cashRecorded: true, wageRecorded: true,
+        ignoredCash: false, ignoredWage: false });
     }
     return rows;
   }

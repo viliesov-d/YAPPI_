@@ -291,10 +291,15 @@
     el('cash-status').classList.toggle('unavailable', !available);
     el('cash-amount').disabled = !available;
     el('cash-amount').parentElement.classList.toggle('disabled', !available);
+    el('cash-wage').disabled = !available;
+    el('cash-wage').parentElement.classList.toggle('disabled', !available);
     el('cash-save').disabled = !available;
     el('cash-save').title = available ? '' : 'Щоб ввести касу, позначте дату як заміну в календарі';
     el('cash-amount').value = Object.prototype.hasOwnProperty.call(state.cash, selectedCashDate)
       ? String(state.cash[selectedCashDate] / 100).replace('.', ',') : '';
+    const entry = state.days[selectedCashDate] || {};
+    el('cash-wage').value = Object.prototype.hasOwnProperty.call(entry, 'amount')
+      ? String(entry.amount / 100).replace('.', ',') : '';
     el('cash-error').hidden = true;
   }
   function saveCash(event) {
@@ -310,30 +315,50 @@
       el('cash-error').hidden = false;
       return;
     }
-    const raw = el('cash-amount').value.trim();
-    const cents = raw ? L.parseMoney(raw) : null;
-    if (raw && cents === null) {
-      el('cash-error').textContent = 'Вкажіть коректну суму каси (до двох знаків після коми).';
+    const cashText = el('cash-amount').value.trim();
+    const wageText = el('cash-wage').value.trim();
+    const cashCents = cashText ? L.parseMoney(cashText) : null;
+    const wageCents = wageText ? L.parseMoney(wageText) : null;
+    if (cashText && cashCents === null) {
+      el('cash-error').textContent = 'Вкажіть коректну касу (до двох знаків після коми).';
       el('cash-error').hidden = false;
+      el('cash-amount').focus();
       return;
     }
-    if (raw) state.cash[date] = cents;
+    if (wageText && wageCents === null) {
+      el('cash-error').textContent = 'Вкажіть коректну зарплату за день (до двох знаків після коми).';
+      el('cash-error').hidden = false;
+      el('cash-wage').focus();
+      return;
+    }
+    // Keep cash in its separate dictionary and wages in the same day record as the calendar.
+    // A partial record is allowed, but it appears in the journal only after both fields are filled.
+    if (cashText) state.cash[date] = cashCents;
     else delete state.cash[date];
+    const entry = { ...(state.days[date] || {}) };
+    if (wageText) entry.amount = wageCents;
+    else delete entry.amount;
+    if (Object.keys(entry).length) state.days[date] = entry;
+    else delete state.days[date];
     selectedCashDate = date;
     saveLocal();
     render();
-    if (storageOK) showToast(raw ? `Касу за ${L.formatDate(date)} записано · синхронізуємо` : 'Запис каси видалено · синхронізуємо');
+    if (storageOK) {
+      showToast(cashText && wageText
+        ? `Касу та зарплату за ${L.formatDate(date)} записано · синхронізуємо`
+        : 'Дані дня збережено · журнал відобразить день після заповнення обох сум');
+    }
   }
   function renderLedger() {
     el('ledger-period').textContent = monthName(view.year, view.month);
     const rows = L.monthLedger(state, view.year, view.month);
-    const stats = L.monthStats(state, view.year, view.month);
-    el('ledger-cash-total').textContent = L.formatMoney(L.monthCashTotal(state, view.year, view.month));
-    el('ledger-wage-total').textContent = L.formatMoney(stats.total);
+    // Journal totals reflect only rows actually visible below, not incomplete entries.
+    el('ledger-cash-total').textContent = L.formatMoney(rows.reduce((sum, item) => sum + item.cash, 0));
+    el('ledger-wage-total').textContent = L.formatMoney(rows.reduce((sum, item) => sum + item.wage, 0));
     const labels = { work: 'Робоча', off: 'Вихідний', replacement: 'Заміна', unpaid: 'За свій рахунок' };
     const body = el('ledger-body');
     if (rows.length === 0) {
-      body.innerHTML = '<tr><td colspan="5" class="ledger-empty">За цей місяць ще немає змін.</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="ledger-empty">Журнал порожній. Внесіть касу та зарплату за день, щоб додати запис.</td></tr>';
       return;
     }
     body.innerHTML = rows.map((item) => {
