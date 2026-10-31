@@ -112,3 +112,35 @@
 /* Small automatic-update notification; does not affect the existing layout. */
 .pwa-update-notice {position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10000;max-width:min(94vw,560px);padding:12px 20px;border:1px solid rgba(178,220,151,.45);border-radius:14px;background:#17283b;color:#fff;box-shadow:0 12px 40px rgba(0,0,0,.22);text-align:center;font:600 14px/1.5 system-ui,sans-serif;}
 .pwa-update-notice[hidden] {display:none !important;}
+
+
+/* Mobile horizontal-swipe fix (2026-10-31).
+   Keep the viewport fixed horizontally without interfering with vertical page
+   scrolling or the ledger's intentional internal horizontal scrolling. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+
+.site-shell { min-width: 0; }
+.ledger-table-wrap,
+.admin-table-wrap {
+  max-width: 100%;
+  overscroll-behavior-x: none;
+}
+
+/* Keep the visually hidden edit-column label inside its table cell.
+   Without a containing block, its absolute position can enlarge the entire
+   layout viewport after the first journal row is entered. */
+.ledger-table th:last-child { position: relative; }
+
+/* Long earnings figures should never push narrow screens sideways. */
+@media (max-width: 640px) {
+  .stat-value {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
