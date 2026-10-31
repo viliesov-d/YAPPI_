@@ -4,7 +4,7 @@ const STATIC_CACHE = 'zmina-static-' + BUILD_ID;
 const SDK_CACHE = 'zmina-firebase-sdk-v13.1.0';
 const APP_ASSETS = [
   './', './index.html', './auth.html', './admin.html', './styles.css',
-  './logic.js', './app.js', './auth.js', './admin.js', './cloud.js',
+  './logic.js', './app.js', './auth.js', './admin.js', './admin-metrics.js', './cloud.js',
   './firebase-config.js', './pwa.js', './favicon.svg', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-512-maskable.png'
 ];

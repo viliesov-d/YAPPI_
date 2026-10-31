@@ -1,19 +1,100 @@
-<!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101b32"><title>Адмінпанель — Зміна</title><link rel="icon" href="favicon.svg" type="image/svg+xml">
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101b32">
+  <meta name="description" content="Зміна — адміністративна панель для перегляду зарплат, каси та виконання планів.">
+  <title>Адмінпанель — Зміна</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="icons/icon-192.png"><link rel="stylesheet" href="styles.css"><script src="firebase-config.js"></script>
-  <script src="pwa.js" defer></script><script src="logic.js" defer></script><script type="module" src="admin.js"></script></head>
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="firebase-config.js"></script>
+  <script src="pwa.js" defer></script>
+  <script src="logic.js" defer></script>
+  <script src="admin-metrics.js" defer></script>
+  <script type="module" src="admin.js"></script>
+</head>
 <body>
-<div class="site-shell"><header class="site-header"><a class="brand" href="index.html"><span class="brand-mark">✳</span><span>зміна<span class="brand-period">.</span></span></a><div class="header-right"><a class="header-account" href="index.html">← Календар</a><button class="header-logout" id="admin-logout">Вийти</button></div></header>
-<main class="admin-main"><div class="admin-bar"><div><div class="section-kicker">ЗАХИЩЕНИЙ ДОСТУП</div><h1>Адмінпанель</h1></div><div class="admin-actions"><button class="admin-action" id="refresh-users">Оновити список ↻</button></div></div>
-<div id="admin-error" class="admin-notice" role="status">Перевіряємо права адміністратора…</div>
-<section id="admin-content" hidden>
-<div class="summary-grid" style="margin-bottom:20px"><article class="stat-card stat-main"><div class="stat-label">Зареєстровано користувачів</div><div class="stat-value" id="admin-total-users">0</div><div class="stat-foot">Профілі Firestore</div></article><article class="stat-card"><div class="stat-label">Активні профілі</div><div class="stat-value" id="admin-active-users">0</div><div class="stat-foot">Без призупинення</div></article><article class="stat-card"><div class="stat-label">Призупинено</div><div class="stat-value" id="admin-paused-users">0</div><div class="stat-foot">Синхронізацію заблоковано</div></article><article class="stat-card"><div class="stat-label">Період</div><div class="stat-value" style="font-size:20px" id="admin-current-month"></div><div class="stat-foot">Для перегляду даних</div></article></div>
-<div class="admin-layout"><section class="admin-panel"><h2>Користувачі</h2><input id="admin-search" class="admin-filter" type="search" placeholder="Пошук за ім'ям або email" aria-label="Пошук користувача"><div id="admin-user-list" class="admin-user-list"></div></section>
-<section class="admin-panel"><div class="admin-bar" style="margin-bottom:10px"><h2 id="admin-selected-title">Оберіть користувача</h2><input id="admin-month" class="admin-month" type="month" min="1900-01" max="2100-12" aria-label="Місяць перегляду"></div><div id="admin-user-details" class="admin-user-details">Виберіть користувача, щоб переглянути його записи.</div>
-<div class="admin-kpis"><div class="admin-kpi"><small>Зарплата за місяць</small><strong id="admin-wages">—</strong></div><div class="admin-kpi"><small>Каса за місяць</small><strong id="admin-cash">—</strong></div><div class="admin-kpi"><small>Виконання плану</small><strong id="admin-plan">—</strong></div></div>
-<div class="admin-actions" style="margin-bottom:15px"><button class="admin-action" id="admin-export" disabled>Експорт записів JSON</button><button class="admin-danger" id="admin-suspend" disabled>Призупинити синхронізацію</button></div>
-<p class="admin-notice" id="admin-user-notice">Адміністратор може переглядати дані й призупиняти їх синхронізацію. Редагування заробітку здійснює власник акаунта.</p>
-<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Дата</th><th>Зміна</th><th>Каса</th><th>Заробіток</th></tr></thead><tbody id="admin-ledger-body"><tr><td colspan="4">Оберіть користувача</td></tr></tbody></table></div></section></div>
-</section>
-</main><footer class="site-footer"><span><strong>зміна.</strong> Адміністрування обліку.</span><span>Доступ за Firebase Custom Claims</span></footer></div>
-</body></html>
+<div class="site-shell">
+  <header class="site-header">
+    <a class="brand" href="index.html"><span class="brand-mark">✳</span><span>зміна<span class="brand-period">.</span></span></a>
+    <div class="header-right"><span class="admin-role-pill">АДМІН</span><a class="header-account" href="index.html">← Календар</a><button class="header-logout" id="admin-logout" type="button">Вийти</button></div>
+  </header>
+  <main class="admin-main admin-dashboard">
+    <section class="admin-hero" aria-labelledby="admin-page-title">
+      <div>
+        <div class="admin-hero-eyebrow">✦ АНАЛІТИКА КОМАНДИ</div>
+        <h1 id="admin-page-title">Панель <span>керування</span></h1>
+        <p>Продажі, зарплати, премії та виконання планів — в одному місці.</p>
+      </div>
+      <div class="admin-toolbar">
+        <label class="admin-toolbar-label" for="admin-month">Звітний місяць</label>
+        <input id="admin-month" class="admin-month" type="month" min="1900-01" max="2100-12" aria-label="Місяць перегляду">
+        <button class="admin-refresh" id="refresh-users" type="button">↻ Оновити дані</button>
+      </div>
+    </section>
+
+    <p id="admin-error" class="admin-notice admin-live-message" role="status" aria-live="polite">Перевіряємо права адміністратора…</p>
+    <section id="admin-content" hidden>
+      <div class="admin-section-heading"><div><div class="section-kicker">ЗАГАЛЬНИЙ ОГЛЯД</div><h2>Команда за <span id="admin-current-month">місяць</span></h2></div><span id="admin-coverage" class="admin-coverage"></span></div>
+      <div class="admin-overview-grid" aria-label="Підсумкові показники">
+        <article class="admin-overview-card featured"><span>Загальна каса</span><strong id="admin-team-cash">—</strong><small>Сума продажів усіх працівників</small><i aria-hidden="true">↗</i></article>
+        <article class="admin-overview-card"><span>Зарплата команди</span><strong id="admin-team-wages">—</strong><small>За внесені робочі зміни</small></article>
+        <article class="admin-overview-card"><span>Виконали план</span><strong id="admin-team-plans">—</strong><small>Серед працівників із планом</small></article>
+        <article class="admin-overview-card"><span>Нараховані премії</span><strong id="admin-team-bonus">—</strong><small>Виплата 15-го наступного місяця</small></article>
+        <article class="admin-overview-card"><span>Користувачів</span><strong id="admin-total-users">—</strong><small id="admin-user-status-caption">Активних: — · Призупинено: —</small></article>
+      </div>
+
+      <div class="admin-analytics-grid">
+        <section class="admin-panel admin-trends" aria-labelledby="admin-team-trends-title">
+          <div class="admin-card-heading"><div><div class="section-kicker">ДИНАМІКА ЗА ДНЯМИ</div><h2 id="admin-team-trends-title">Результати команди</h2></div><span class="admin-subtag">За вибраний місяць</span></div>
+          <div class="admin-chart-columns">
+            <div class="admin-chart-group"><div class="admin-chart-label"><span class="admin-chart-spot cash"></span>Продажі <span class="admin-chart-unit">₴ / день</span></div><div id="admin-team-cash-chart" class="admin-svg-chart"></div></div>
+            <div class="admin-chart-group"><div class="admin-chart-label"><span class="admin-chart-spot wage"></span>Зарплата <span class="admin-chart-unit">₴ / день</span></div><div id="admin-team-wage-chart" class="admin-svg-chart"></div></div>
+          </div>
+        </section>
+        <section class="admin-panel admin-leaders" aria-labelledby="admin-leaders-title">
+          <div class="admin-card-heading"><div><div class="section-kicker">ТОП ЗА ПРОДАЖАМИ</div><h2 id="admin-leaders-title">Лідери місяця</h2></div></div>
+          <div id="admin-leader-list" class="admin-leader-list"><p class="admin-muted">Ще немає даних</p></div>
+        </section>
+      </div>
+
+      <div class="admin-section-heading admin-people-heading"><div><div class="section-kicker">ОСОБИСТІ ПОКАЗНИКИ</div><h2>Працівники</h2></div><button type="button" id="admin-export-team" class="admin-text-action" disabled>⇩ Звіт CSV за місяць</button></div>
+      <div class="admin-layout admin-workspace">
+        <section class="admin-panel admin-staff-panel" aria-label="Список працівників">
+          <label class="sr-only" for="admin-search">Пошук за іменем або email</label>
+          <input id="admin-search" class="admin-filter" type="search" placeholder="⌕  Пошук працівника…">
+          <div class="admin-people-controls">
+            <label><span>Статус</span><select id="admin-filter-status"><option value="all">Усі</option><option value="active">Активні</option><option value="paused">Призупинені</option></select></label>
+            <label><span>Сортування</span><select id="admin-sort"><option value="cash">За касою ↓</option><option value="wage">За зарплатою ↓</option><option value="plan">За % плану ↓</option><option value="name">За ім'ям А–Я</option></select></label>
+          </div>
+          <div class="admin-list-count" id="admin-list-count">Завантажуємо…</div>
+          <div id="admin-user-list" class="admin-user-list"></div>
+        </section>
+        <section class="admin-panel admin-detail-panel" aria-labelledby="admin-selected-title">
+          <div class="admin-detail-top">
+            <div><div class="section-kicker">КАРТКА ПРАЦІВНИКА</div><h2 id="admin-selected-title">Оберіть працівника</h2><p id="admin-user-details" class="admin-user-details">Натисніть на ім'я зліва, щоб переглянути статистику.</p></div>
+            <span class="admin-state-pill" id="admin-person-status">—</span>
+          </div>
+          <div class="admin-person-kpis">
+            <div><small>Зарплата за місяць</small><strong id="admin-wages">—</strong></div>
+            <div><small>Каса за місяць</small><strong id="admin-cash">—</strong></div>
+            <div><small>Виконання плану</small><strong id="admin-plan">—</strong></div>
+            <div><small>Заповнено змін</small><strong id="admin-shifts">—</strong></div>
+          </div>
+          <div class="admin-progress-block"><div class="admin-progress-head"><span>План продажів</span><strong id="admin-plan-meta">—</strong></div><div class="admin-progress-track"><div id="admin-plan-bar" class="admin-progress-fill"></div></div><div id="admin-bonus-note" class="admin-bonus-note">План ще не задано</div></div>
+          <div class="admin-person-trends"><h3>Динаміка за місяць</h3><div class="admin-chart-columns"><div class="admin-chart-group"><div class="admin-chart-label"><span class="admin-chart-spot cash"></span>Каса</div><div id="admin-person-cash-chart" class="admin-svg-chart"></div></div><div class="admin-chart-group"><div class="admin-chart-label"><span class="admin-chart-spot wage"></span>Заробіток</div><div id="admin-person-wage-chart" class="admin-svg-chart"></div></div></div></div>
+          <div class="admin-person-bottom"><h3>Журнал змін</h3><span id="admin-ledger-caption">—</span></div>
+          <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Дата</th><th>Тип зміни</th><th>Каса</th><th>Заробіток</th></tr></thead><tbody id="admin-ledger-body"><tr><td colspan="4">Оберіть працівника</td></tr></tbody></table></div>
+          <div class="admin-person-actions"><button class="admin-action" id="admin-export" type="button" disabled>⇩ Експорт JSON</button><button class="admin-danger" id="admin-suspend" type="button" disabled>Призупинити синхронізацію</button></div>
+          <p class="admin-notice">Адмінпанель показує записи з Firestore в режимі перегляду. Працівник сам редагує касу та заробіток; призупинення блокує хмарну синхронізацію, але не вхід в акаунт.</p>
+        </section>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer"><span><strong>зміна.</strong> Аналітика роботи команди.</span><span>Захищено Firebase Custom Claims</span></footer>
+</div>
+</body>
+</html>
